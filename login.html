@@ -1,0 +1,572 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login &amp; Sign Up | Concert Setlist &amp; Tour Archive</title>
+    <meta name="description" content="Sign in or Create an Account for Concert Setlist &amp; Tour Archive — Access live music setlists, tour statistics, and artist databases.">
+
+    <!-- Immediate Theme Application (Prevents theme flash) -->
+    <script>
+        (function() {
+            const saved = localStorage.getItem('concert_theme') || 'light';
+            document.documentElement.setAttribute('data-theme', saved);
+            if (saved === 'dark') document.documentElement.classList.add('dark');
+        })();
+    </script>
+
+    <!-- Google Fonts: Inter & Outfit -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+
+    <!-- Design System CSS -->
+    <link rel="stylesheet" href="/css/theme.css">
+
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        heading: ['Outfit', 'sans-serif']
+                    },
+                    colors: {
+                        brand: {
+                            bg: '#FAF8F4',
+                            bgAlt: '#F2EEE6',
+                            card: '#FFFFFF',
+                            charcoal: '#292524',
+                            charcoalSecondary: '#44403C',
+                            gold: '#B88A36',
+                            goldHover: '#96702B',
+                            goldLight: '#F6EBD1',
+                            goldAccent: '#6F511D',
+                            textSecondary: '#78716C',
+                            textMuted: '#A8A29E',
+                            border: '#E7E0D5',
+                            inputBorder: '#D6CFC3',
+                            error: '#B42318',
+                            success: '#38734A'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- Toastify -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
+
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+        }
+
+        .auth-card {
+            background-color: #FFFFFF;
+            border: 1px solid #E7E0D5;
+            box-shadow: 0 8px 32px rgba(41, 37, 36, 0.08);
+            border-radius: 20px;
+        }
+
+        .auth-tab {
+            flex: 1;
+            padding: 10px;
+            border-radius: 12px;
+            font-weight: 600;
+            font-size: 13px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            color: #78716C;
+            background: transparent;
+            border: 1px solid transparent;
+        }
+        .auth-tab.active {
+            background-color: #F6EBD1;
+            color: #292524;
+            border-color: #B88A36;
+            box-shadow: 0 2px 8px rgba(184, 138, 54, 0.15);
+        }
+
+        .auth-input {
+            background-color: #FFFFFF;
+            border: 1px solid #D6CFC3;
+            color: #292524;
+            border-radius: 12px;
+            padding: 10px 14px;
+            font-size: 14px;
+            transition: all 0.2s ease;
+        }
+        .auth-input::placeholder {
+            color: #A8A29E;
+        }
+        .auth-input:focus {
+            outline: none;
+            border-color: #B88A36;
+            box-shadow: 0 0 0 3px rgba(184, 138, 54, 0.18);
+        }
+
+        @keyframes shakeCard {
+            0%, 100% { transform: translateX(0); }
+            15% { transform: translateX(-8px); }
+            30% { transform: translateX(8px); }
+            45% { transform: translateX(-6px); }
+            60% { transform: translateX(6px); }
+            75% { transform: translateX(-3px); }
+            90% { transform: translateX(3px); }
+        }
+        .shake {
+            animation: shakeCard 0.5s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+            border-color: #B42318 !important;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between selection:bg-[#F6EBD1] selection:text-[#292524]">
+
+    <!-- Header -->
+    <header class="w-full border-b border-[#E7E0D5] bg-[#FFFFFF] shadow-sm">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
+            <a href="/" class="flex items-center gap-2.5 group">
+                <span class="w-9 h-9 rounded-xl bg-[#F6EBD1] border border-[#E7D7AF] flex items-center justify-center text-[#B88A36] text-lg font-bold">
+                    🎵
+                </span>
+                <div>
+                    <span class="font-heading font-extrabold text-lg sm:text-xl tracking-tight text-[#292524]">Concert<span class="text-[#B88A36]">Archive</span></span>
+                    <span class="block text-[10px] text-[#78716C] font-semibold tracking-wide uppercase">Setlist &amp; Tour Archive</span>
+                </div>
+            </a>
+            <div class="flex items-center gap-3">
+                <!-- Theme Toggle Button -->
+                <button type="button" class="btn-theme-toggle" aria-label="Toggle Theme" title="Switch Theme (Light / Dark)">
+                    <i data-lucide="sun" class="theme-icon-sun w-4 h-4 text-[#B88A36] hidden"></i>
+                    <i data-lucide="moon" class="theme-icon-moon w-4 h-4 text-[#B88A36]"></i>
+                </button>
+                <a href="/" class="text-xs font-semibold text-[#44403C] hover:text-[#96702B] flex items-center gap-1.5 transition-colors">
+                    <i data-lucide="arrow-left" class="w-3.5 h-3.5"></i>
+                    <span>Back to Home</span>
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Login Container -->
+    <main class="flex-1 flex items-center justify-center p-4 sm:p-6 my-8">
+        <div class="w-full max-w-md space-y-5">
+
+            <!-- Tab Selector: Sign In vs Create Account -->
+            <div class="p-1 rounded-2xl bg-[#F2EEE6] border border-[#E7E0D5] flex items-center gap-1 shadow-inner">
+                <button type="button" id="tab-login" class="auth-tab active">
+                    <i data-lucide="log-in" class="w-4 h-4 text-[#B88A36]"></i>
+                    <span>Sign In</span>
+                </button>
+                <button type="button" id="tab-register" class="auth-tab">
+                    <i data-lucide="user-plus" class="w-4 h-4 text-[#78716C]"></i>
+                    <span>Create Account</span>
+                </button>
+            </div>
+
+            <!-- Login Card -->
+            <div id="login-card" class="auth-card p-7 sm:p-9 space-y-6">
+                
+                <!-- ══ SIGN IN PANEL ══ -->
+                <div id="panel-login" class="space-y-5">
+                    <div class="text-center space-y-2">
+                        <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider bg-[#F6EBD1] border border-[#E7D7AF] text-[#6F511D]">
+                            <i data-lucide="shield-check" class="w-3.5 h-3.5 text-[#B88A36]"></i>
+                            Account Authentication
+                        </div>
+                        <h1 class="font-heading font-black text-2xl sm:text-3xl tracking-tight text-[#292524]">
+                            Welcome <span class="text-[#B88A36]">Back</span>
+                        </h1>
+                        <p class="text-xs text-[#78716C] leading-relaxed">Enter your email and password to access the ConcertArchive dashboard.</p>
+                    </div>
+
+                    <!-- 1-Click Demo Fill Banner -->
+                    <div class="p-4 rounded-xl bg-[#FAF8F4] border border-[#E7E0D5] text-xs space-y-2.5">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center gap-1.5 text-[#44403C] font-bold text-[11px] uppercase tracking-wider">
+                                <i data-lucide="key" class="w-3.5 h-3.5 text-[#B88A36]"></i>
+                                <span>Demo Credentials</span>
+                            </div>
+                            <button type="button" id="btn-demo-fill"
+                                class="px-3 py-1 text-[11px] font-bold rounded-lg bg-[#F6EBD1] hover:bg-[#EEDCAE] text-[#6F511D] border border-[#E7D7AF] flex items-center gap-1 transition-all shadow-sm">
+                                <i data-lucide="zap" class="w-3 h-3 text-[#B88A36]"></i>
+                                <span>1-Click Fill</span>
+                            </button>
+                        </div>
+                        <div class="flex items-center justify-between text-[11px] text-[#78716C] pt-2 border-t border-[#E7E0D5]">
+                            <span>Email: <strong class="text-[#292524] font-mono">admin@concertarchive.com</strong></span>
+                            <span>Pass: <strong class="text-[#292524] font-mono">admin123</strong></span>
+                        </div>
+                    </div>
+
+                    <!-- Sign In Form -->
+                    <form id="login-form" class="space-y-4" novalidate>
+                        <div class="space-y-1.5">
+                            <label for="input-email" class="block text-xs font-semibold text-[#44403C] uppercase tracking-wider">Email Address</label>
+                            <div class="relative">
+                                <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[#78716C]">
+                                    <i data-lucide="mail" class="w-4 h-4"></i>
+                                </div>
+                                <input id="input-email" type="email" autocomplete="username" required placeholder="admin@concertarchive.com"
+                                    class="auth-input w-full pl-10 pr-4">
+                            </div>
+                        </div>
+
+                        <div class="space-y-1.5">
+                            <div class="flex items-center justify-between">
+                                <label for="input-pw" class="block text-xs font-semibold text-[#44403C] uppercase tracking-wider">Password</label>
+                            </div>
+                            <div class="relative">
+                                <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[#78716C]">
+                                    <i data-lucide="lock" class="w-4 h-4"></i>
+                                </div>
+                                <input id="input-pw" type="password" autocomplete="current-password" required placeholder="••••••••"
+                                    class="auth-input w-full pl-10 pr-10">
+                                <button type="button" id="btn-pw-toggle" aria-label="Toggle password visibility"
+                                    class="absolute inset-y-0 right-0 pr-3.5 flex items-center text-[#78716C] hover:text-[#292524] transition-colors">
+                                    <i data-lucide="eye" id="eye-on" class="w-4 h-4"></i>
+                                    <i data-lucide="eye-off" id="eye-off" class="w-4 h-4 hidden"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="flex items-center justify-between pt-1">
+                            <label class="flex items-center gap-2 cursor-pointer select-none">
+                                <input type="checkbox" id="chk-remember" checked
+                                    class="w-4 h-4 rounded text-[#B88A36] focus:ring-[#B88A36] border-[#D6CFC3]">
+                                <span class="text-xs text-[#78716C]">Remember me on this browser</span>
+                            </label>
+                        </div>
+
+                        <button type="submit" id="btn-login-submit"
+                            class="btn-gold w-full py-3.5 text-sm font-bold shadow-md">
+                            <span id="btn-text" class="flex items-center justify-center gap-2">
+                                <span>Sign In to Dashboard</span>
+                                <i data-lucide="arrow-right" class="w-4 h-4"></i>
+                            </span>
+                            <span id="btn-spin" class="hidden items-center justify-center gap-2">
+                                <svg class="animate-spin h-4 w-4 text-[#292524]" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
+                                </svg>
+                                <span>Verifying credentials...</span>
+                            </span>
+                        </button>
+                    </form>
+
+                    <div class="pt-2 text-center text-xs text-[#78716C]">
+                        <span>Need a new account? </span>
+                        <button type="button" id="link-go-register" class="font-bold text-[#96702B] hover:text-[#6F511D] underline">Create one here</button>
+                    </div>
+                </div>
+
+                <!-- ══ REGISTRATION PANEL ══ -->
+                <div id="panel-register" class="hidden space-y-5">
+                    <div class="text-center space-y-2">
+                        <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider bg-[#F6EBD1] border border-[#E7D7AF] text-[#6F511D]">
+                            <i data-lucide="sparkles" class="w-3.5 h-3.5 text-[#B88A36]"></i>
+                            New Account
+                        </div>
+                        <h1 class="font-heading font-black text-2xl sm:text-3xl tracking-tight text-[#292524]">
+                            Join <span class="text-[#B88A36]">ConcertArchive</span>
+                        </h1>
+                        <p class="text-xs text-[#78716C] leading-relaxed">Create your account to curate setlists and track live music tours.</p>
+                    </div>
+
+                    <form id="register-form" class="space-y-4" novalidate>
+                        <div class="space-y-1.5">
+                            <label for="reg-name" class="block text-xs font-semibold text-[#44403C] uppercase tracking-wider">Full Name</label>
+                            <div class="relative">
+                                <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[#78716C]">
+                                    <i data-lucide="user" class="w-4 h-4"></i>
+                                </div>
+                                <input id="reg-name" type="text" required placeholder="Alex Turner"
+                                    class="auth-input w-full pl-10 pr-4">
+                            </div>
+                        </div>
+
+                        <div class="space-y-1.5">
+                            <label for="reg-email" class="block text-xs font-semibold text-[#44403C] uppercase tracking-wider">Email Address</label>
+                            <div class="relative">
+                                <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[#78716C]">
+                                    <i data-lucide="mail" class="w-4 h-4"></i>
+                                </div>
+                                <input id="reg-email" type="email" required placeholder="alex@example.com"
+                                    class="auth-input w-full pl-10 pr-4">
+                            </div>
+                        </div>
+
+                        <div class="space-y-1.5">
+                            <label for="reg-pw" class="block text-xs font-semibold text-[#44403C] uppercase tracking-wider">Password</label>
+                            <div class="relative">
+                                <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[#78716C]">
+                                    <i data-lucide="lock" class="w-4 h-4"></i>
+                                </div>
+                                <input id="reg-pw" type="password" required placeholder="At least 6 characters"
+                                    class="auth-input w-full pl-10 pr-10">
+                                <button type="button" id="btn-reg-pw-toggle" aria-label="Toggle password visibility"
+                                    class="absolute inset-y-0 right-0 pr-3.5 flex items-center text-[#78716C] hover:text-[#292524] transition-colors">
+                                    <i data-lucide="eye" id="reg-eye-on" class="w-4 h-4"></i>
+                                    <i data-lucide="eye-off" id="reg-eye-off" class="w-4 h-4 hidden"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="space-y-1.5">
+                            <label for="reg-role" class="block text-xs font-semibold text-[#44403C] uppercase tracking-wider">User Role</label>
+                            <select id="reg-role" class="auth-input w-full">
+                                <option value="Audience Member">Audience Member (Read &amp; Explore)</option>
+                                <option value="Concert Tour Curator">Concert Tour Curator</option>
+                                <option value="Super Admin">Super Admin</option>
+                            </select>
+                        </div>
+
+                        <button type="submit" id="btn-reg-submit"
+                            class="btn-gold w-full py-3.5 text-sm font-bold shadow-md">
+                            <span id="reg-btn-text" class="flex items-center justify-center gap-2">
+                                <span>Create Free Account</span>
+                                <i data-lucide="check-circle-2" class="w-4 h-4"></i>
+                            </span>
+                            <span id="reg-btn-spin" class="hidden items-center justify-center gap-2">
+                                <svg class="animate-spin h-4 w-4 text-[#292524]" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
+                                </svg>
+                                <span>Registering account...</span>
+                            </span>
+                        </button>
+                    </form>
+
+                    <div class="pt-2 text-center text-xs text-[#78716C]">
+                        <span>Already registered? </span>
+                        <button type="button" id="link-go-login" class="font-bold text-[#96702B] hover:text-[#6F511D] underline">Sign in here</button>
+                    </div>
+                </div>
+
+                <!-- Error Alert Box -->
+                <div id="error-box" class="hidden p-3.5 rounded-xl bg-[#FDE8E8] border border-[#F8B4B4] text-[#B42318] text-xs flex items-center gap-2.5">
+                    <i data-lucide="alert-circle" class="w-4 h-4 flex-shrink-0 text-[#B42318]"></i>
+                    <span id="error-text" class="flex-1 font-semibold">Invalid credentials. Please check your inputs.</span>
+                </div>
+
+                <div class="pt-3 border-t border-[#E7E0D5] text-center">
+                    <p class="text-[11px] text-[#78716C]">Protected by backend authentication &amp; encrypted database records.</p>
+                </div>
+
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="border-t border-[#E7E0D5] bg-[#FFFFFF] py-4 text-center text-xs text-[#78716C]">
+        <p>Concert Setlist &amp; Tour Archive &copy; 2026 · All Rights Reserved</p>
+    </footer>
+
+    <!-- Logic Script -->
+    <script type="module">
+        import { loginAdmin, registerUser, enforceGuestGuard } from './js/auth.js';
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            if (window.lucide) window.lucide.createIcons();
+            await enforceGuestGuard();
+        });
+
+        // Tab Switching Logic
+        const tabLogin    = document.getElementById('tab-login');
+        const tabRegister = document.getElementById('tab-register');
+        const panelLogin  = document.getElementById('panel-login');
+        const panelReg    = document.getElementById('panel-register');
+
+        function switchMode(mode) {
+            hideError();
+            if (mode === 'register') {
+                tabRegister.classList.add('active');
+                tabLogin.classList.remove('active');
+                panelReg.classList.remove('hidden');
+                panelLogin.classList.add('hidden');
+            } else {
+                tabLogin.classList.add('active');
+                tabRegister.classList.remove('active');
+                panelLogin.classList.remove('hidden');
+                panelReg.classList.add('hidden');
+            }
+            if (window.lucide) window.lucide.createIcons();
+        }
+
+        tabLogin?.addEventListener('click', () => switchMode('login'));
+        tabRegister?.addEventListener('click', () => switchMode('register'));
+        document.getElementById('link-go-register')?.addEventListener('click', () => switchMode('register'));
+        document.getElementById('link-go-login')?.addEventListener('click', () => switchMode('login'));
+
+        // 1-Click Demo Fill
+        document.getElementById('btn-demo-fill')?.addEventListener('click', () => {
+            document.getElementById('input-email').value = 'admin@concertarchive.com';
+            document.getElementById('input-pw').value    = 'admin123';
+            hideError();
+        });
+
+        // Password Show/Hide Toggle (Login)
+        document.getElementById('btn-pw-toggle')?.addEventListener('click', () => {
+            const inputPw = document.getElementById('input-pw');
+            const eyeOn   = document.getElementById('eye-on');
+            const eyeOff  = document.getElementById('eye-off');
+            if (inputPw.type === 'password') {
+                inputPw.type = 'text';
+                eyeOn.classList.add('hidden'); eyeOff.classList.remove('hidden');
+            } else {
+                inputPw.type = 'password';
+                eyeOff.classList.add('hidden'); eyeOn.classList.remove('hidden');
+            }
+        });
+
+        // Password Show/Hide Toggle (Register)
+        document.getElementById('btn-reg-pw-toggle')?.addEventListener('click', () => {
+            const inputPw = document.getElementById('reg-pw');
+            const eyeOn   = document.getElementById('reg-eye-on');
+            const eyeOff  = document.getElementById('reg-eye-off');
+            if (inputPw.type === 'password') {
+                inputPw.type = 'text';
+                eyeOn.classList.add('hidden'); eyeOff.classList.remove('hidden');
+            } else {
+                inputPw.type = 'password';
+                eyeOff.classList.add('hidden'); eyeOn.classList.remove('hidden');
+            }
+        });
+
+        function showError(msg) {
+            const box = document.getElementById('error-box');
+            const txt = document.getElementById('error-text');
+            if (box && txt) {
+                txt.textContent = msg;
+                box.classList.remove('hidden');
+            }
+            shakeCard();
+        }
+
+        function hideError() {
+            const box = document.getElementById('error-box');
+            if (box) box.classList.add('hidden');
+        }
+
+        function shakeCard() {
+            const card = document.getElementById('login-card');
+            if (!card) return;
+            card.classList.remove('shake');
+            void card.offsetWidth;
+            card.classList.add('shake');
+            setTimeout(() => card.classList.remove('shake'), 600);
+        }
+
+        function setLoginLoading(on) {
+            const btn  = document.getElementById('btn-login-submit');
+            const txt  = document.getElementById('btn-text');
+            const spin = document.getElementById('btn-spin');
+            if (!btn) return;
+            btn.disabled = on;
+            if (on) {
+                txt.classList.add('hidden'); spin.classList.remove('hidden'); spin.classList.add('flex');
+            } else {
+                txt.classList.remove('hidden'); spin.classList.add('hidden'); spin.classList.remove('flex');
+            }
+        }
+
+        function setRegLoading(on) {
+            const btn  = document.getElementById('btn-reg-submit');
+            const txt  = document.getElementById('reg-btn-text');
+            const spin = document.getElementById('reg-btn-spin');
+            if (!btn) return;
+            btn.disabled = on;
+            if (on) {
+                txt.classList.add('hidden'); spin.classList.remove('hidden'); spin.classList.add('flex');
+            } else {
+                txt.classList.remove('hidden'); spin.classList.add('hidden'); spin.classList.remove('flex');
+            }
+        }
+
+        function toast(msg, type = 'success') {
+            if (typeof Toastify !== 'function') return;
+            const bg = type === 'error'   ? '#B42318'
+                     : type === 'success' ? '#38734A'
+                                          : '#B88A36';
+            Toastify({
+                text: msg, duration: 3000, gravity: 'top', position: 'right',
+                style: { background: bg, borderRadius: '12px', border: '1px solid rgba(255,255,255,0.2)', color: '#fff', padding: '12px 20px', fontWeight: '600' }
+            }).showToast();
+        }
+
+        // Login Submit Handler
+        document.getElementById('login-form')?.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            hideError();
+
+            const identifier = document.getElementById('input-email').value.trim();
+            const password   = document.getElementById('input-pw').value.trim();
+            const rememberMe = document.getElementById('chk-remember').checked;
+
+            if (!identifier || !password) {
+                showError('Please enter both email and password.');
+                return;
+            }
+
+            setLoginLoading(true);
+
+            try {
+                const res = await loginAdmin(identifier, password, rememberMe);
+                toast(`Welcome back, ${res.data?.user?.name || 'User'}! Redirecting...`, 'success');
+                setTimeout(() => {
+                    window.location.replace('/dashboard');
+                }, 600);
+            } catch (err) {
+                setLoginLoading(false);
+                showError(err.message || 'Invalid email or password.');
+            }
+        });
+
+        // Register Submit Handler
+        document.getElementById('register-form')?.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            hideError();
+
+            const name     = document.getElementById('reg-name').value.trim();
+            const email    = document.getElementById('reg-email').value.trim();
+            const password = document.getElementById('reg-pw').value.trim();
+            const role     = document.getElementById('reg-role').value;
+
+            if (!email || !password) {
+                showError('Please enter an email address and password.');
+                return;
+            }
+
+            setRegLoading(true);
+
+            try {
+                const res = await registerUser(name, email, password, role, true);
+                toast(`Account created! Welcome, ${res.data?.user?.name}!`, 'success');
+                setTimeout(() => {
+                    window.location.replace('/dashboard');
+                }, 600);
+            } catch (err) {
+                setRegLoading(false);
+                showError(err.message || 'Registration failed.');
+            }
+        });
+    </script>
+    <!-- Theme Toggle Module -->
+    <script type="module" src="/js/theme.js"></script>
+</body>
+</html>

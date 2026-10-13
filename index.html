@@ -1,0 +1,731 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Concert Setlist &amp; Tour Archive | India Dashboard</title>
+    <meta name="description" content="Real-time Concert Setlist &amp; Tour Archive dashboard powered by setlist.fm API — India concerts, top songs, cities, and yearly trends.">
+
+    <!-- Immediate Theme Application (Prevents theme flash) -->
+    <script>
+        (function() {
+            const saved = localStorage.getItem('concert_theme') || 'light';
+            document.documentElement.setAttribute('data-theme', saved);
+            if (saved === 'dark') document.documentElement.classList.add('dark');
+        })();
+    </script>
+
+    <!-- Immediate Auth Guard -->
+    <script type="module">
+        import { enforceAuthGuard } from './js/auth.js';
+        enforceAuthGuard();
+    </script>
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;600;700;800&display=swap" rel="stylesheet">
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        heading: ['Outfit', 'sans-serif']
+                    },
+                    colors: {
+                        cream: '#FAF8F4',
+                        warm: '#F2EEE6',
+                        charcoal: '#292524',
+                        charcoalSecondary: '#44403C',
+                        gold: '#B88A36',
+                        goldHover: '#96702B',
+                        goldLight: '#F6EBD1',
+                        borderLight: '#E7E0D5',
+                        borderInput: '#D6CFC3'
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- Centralized Charcoal & Gold Theme System -->
+    <link rel="stylesheet" href="css/theme.css">
+
+    <!-- Toastify CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
+
+    <!-- Chart.js + DataLabels -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
+
+    <!-- CountUp.js -->
+    <script src="https://cdn.jsdelivr.net/npm/countup.js@2.8.0/dist/countUp.umd.js"></script>
+
+    <!-- Toastify JS -->
+    <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
+
+    <!-- Alpine.js -->
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+        }
+        .filter-select {
+            appearance: none;
+            background-color: #FFFFFF;
+            border: 1px solid #D6CFC3;
+            color: #292524;
+            border-radius: 0.75rem;
+            padding: 0.45rem 2.2rem 0.45rem 0.85rem;
+            font-size: 0.825rem;
+            font-family: 'Inter', sans-serif;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%23B88A36'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 0.65rem center;
+            background-size: 0.95rem;
+            cursor: pointer;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+        .filter-select:focus {
+            outline: none;
+            border-color: #B88A36;
+            box-shadow: 0 0 0 2px rgba(184, 138, 54, 0.2);
+        }
+        .filter-select option {
+            background-color: #FFFFFF;
+            color: #292524;
+        }
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #F2EEE6; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #D6CFC3; border-radius: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #B88A36; }
+        .toastify {
+            border-radius: 12px !important;
+            font-family: 'Inter', sans-serif !important;
+            font-weight: 500 !important;
+            box-shadow: 0 10px 25px -5px rgba(41, 37, 36, 0.15) !important;
+        }
+        .badge-api {
+            background: #F6EBD1;
+            color: #6F511D;
+            border: 1px solid #E7D7AF;
+        }
+        .badge-db {
+            background: #EDF7EE;
+            color: #38734A;
+            border: 1px solid #C4E2C7;
+        }
+        .badge-nodata {
+            background: #FEE4E2;
+            color: #B42318;
+            border: 1px solid #FECDCA;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col antialiased selection:bg-[#F6EBD1] selection:text-[#6F511D]"
+      x-data="{ activeTab: 'dashboard' }">
+
+    <!-- ═══ Top Navigation ═══════════════════════════════════════════════════ -->
+    <header class="sticky top-0 z-40 w-full border-b border-[#E7E0D5] bg-[#FFFFFF] shadow-sm">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
+
+            <!-- Logo -->
+            <a href="/" class="flex items-center gap-3 group">
+                <div class="w-10 h-10 rounded-xl bg-[#F6EBD1] border border-[#E7D7AF] flex items-center justify-center text-[#B88A36] shadow-sm group-hover:scale-105 transition-transform">
+                    <i data-lucide="disc" class="w-5 h-5"></i>
+                </div>
+                <div>
+                    <h1 class="font-heading font-extrabold text-lg sm:text-xl tracking-tight text-[#292524]">ConcertArchive</h1>
+                    <p class="text-[10px] text-[#78716C] font-semibold tracking-wide uppercase">Setlist &amp; Tour Database</p>
+                </div>
+            </a>
+
+            <!-- Search -->
+            <div class="relative flex-1 max-w-md hidden md:block">
+                <div class="relative">
+                    <i data-lucide="search" class="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-[#78716C] pointer-events-none"></i>
+                    <input id="global-search-input" type="text" placeholder="Search artists, songs, tours, venues…"
+                        class="w-full pl-10 pr-4 py-2 text-sm rounded-xl bg-[#FFFFFF] border border-[#D6CFC3] text-[#292524] placeholder-[#A8A29E] focus:outline-none focus:border-[#B88A36] focus:ring-2 focus:ring-[#B88A36]/20 transition-all">
+                </div>
+                <div id="search-dropdown" class="hidden absolute left-0 right-0 top-12 bg-[#FFFFFF] rounded-xl shadow-xl border border-[#E7E0D5] overflow-hidden z-50 max-h-96 overflow-y-auto custom-scrollbar"></div>
+            </div>
+
+            <!-- API & AI Status -->
+            <div class="flex items-center gap-3">
+                <div id="ai-status-indicator" class="flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#F6EBD1] border border-[#E7D7AF] text-[#6F511D] text-xs font-semibold">
+                    <span class="w-2 h-2 rounded-full bg-[#B88A36] animate-pulse"></span>
+                    <span>Groq AI Active</span>
+                </div>
+                <div class="flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#F2EEE6] border border-[#E7E0D5] text-[#44403C] text-xs font-semibold hidden sm:flex">
+                    <span class="w-2 h-2 rounded-full bg-[#38734A] animate-pulse"></span>
+                    <span>setlist.fm + Firebase</span>
+                </div>
+
+                <!-- Theme Toggle Button -->
+                <button type="button" class="btn-theme-toggle" aria-label="Toggle Theme" title="Switch Theme (Light / Dark)">
+                    <i data-lucide="sun" class="theme-icon-sun w-4 h-4 text-[#B88A36] hidden"></i>
+                    <i data-lucide="moon" class="theme-icon-moon w-4 h-4 text-[#B88A36]"></i>
+                </button>
+
+                <!-- Admin Auth Navigation Pill -->
+                <div id="nav-auth-container" class="flex items-center">
+                    <a href="login.html" id="btn-admin-login-nav"
+                        class="flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-[#F6EBD1] hover:bg-[#ebd9b3] border border-[#E7D7AF] text-[#6F511D] text-xs font-semibold shadow-sm transition-all transform hover:scale-[1.02]">
+                        <i data-lucide="shield" class="w-3.5 h-3.5 text-[#B88A36]"></i>
+                        <span>Admin Login</span>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- ═══ Navigation Tabs ══════════════════════════════════════════════════ -->
+    <nav class="border-b border-[#E7E0D5] bg-[#FFFFFF] shadow-xs">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex space-x-6 overflow-x-auto custom-scrollbar">
+            <button id="tab-btn-dashboard" @click="activeTab = 'dashboard'"
+                :class="activeTab === 'dashboard' ? 'border-[#B88A36] text-[#6F511D] font-bold bg-[#F6EBD1]/40' : 'border-transparent text-[#78716C] hover:text-[#292524]'"
+                class="py-3 px-3 border-b-2 text-sm transition-all duration-200 flex items-center gap-2 whitespace-nowrap rounded-t-lg">
+                <i data-lucide="layout-dashboard" class="w-4 h-4 text-[#B88A36]"></i> Dashboard &amp; Analytics
+            </button>
+            <button id="tab-btn-ai" @click="activeTab = 'ai-assistant'"
+                :class="activeTab === 'ai-assistant' ? 'border-[#B88A36] text-[#6F511D] font-bold bg-[#F6EBD1]/40' : 'border-transparent text-[#78716C] hover:text-[#292524]'"
+                class="py-3 px-3 border-b-2 text-sm transition-all duration-200 flex items-center gap-2 whitespace-nowrap rounded-t-lg relative">
+                <i data-lucide="bot" class="w-4 h-4 text-[#B88A36]"></i> AI Assistant &amp; Predictor
+                <span class="bg-[#F6EBD1] text-[#6F511D] border border-[#E7D7AF] text-[9px] font-extrabold px-1.5 py-0.5 rounded-full uppercase shadow-xs">Groq</span>
+            </button>
+            <button id="tab-btn-concerts" @click="activeTab = 'concerts'"
+                :class="activeTab === 'concerts' ? 'border-[#B88A36] text-[#6F511D] font-bold bg-[#F6EBD1]/40' : 'border-transparent text-[#78716C] hover:text-[#292524]'"
+                class="py-3 px-3 border-b-2 text-sm transition-all duration-200 flex items-center gap-2 whitespace-nowrap rounded-t-lg">
+                <i data-lucide="calendar" class="w-4 h-4 text-[#B88A36]"></i> Recent Concerts
+            </button>
+            <button id="tab-btn-artists" @click="activeTab = 'artists'"
+                :class="activeTab === 'artists' ? 'border-[#B88A36] text-[#6F511D] font-bold bg-[#F6EBD1]/40' : 'border-transparent text-[#78716C] hover:text-[#292524]'"
+                class="py-3 px-3 border-b-2 text-sm transition-all duration-200 flex items-center gap-2 whitespace-nowrap rounded-t-lg">
+                <i data-lucide="users" class="w-4 h-4 text-[#B88A36]"></i> Artist Management
+            </button>
+        </div>
+    </nav>
+
+    <!-- ═══ Main Content ═════════════════════════════════════════════════════ -->
+    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+
+        <!-- ── Filter Bar ────────────────────────────────────────────────── -->
+        <section id="filter-section" class="bg-[#FFFFFF] rounded-2xl px-5 py-4 flex flex-wrap items-center gap-4 border border-[#E7E0D5] shadow-sm">
+            <div class="flex items-center gap-2 text-[#292524] text-sm font-bold">
+                <i data-lucide="filter" class="w-4 h-4 text-[#B88A36]"></i> Filters
+            </div>
+
+            <!-- Country -->
+            <div class="flex items-center gap-2">
+                <label for="filter-country" class="text-xs text-[#44403C] font-semibold whitespace-nowrap">Country</label>
+                <div class="relative">
+                    <select id="filter-country" class="filter-select font-semibold text-[#292524]">
+                        <option value="India">🇮🇳 India</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Artist (Searchable Worldwide List) -->
+            <div class="flex items-center gap-2">
+                <label for="filter-artist" class="text-xs text-[#44403C] font-semibold whitespace-nowrap">Artist</label>
+                <div class="relative flex items-center">
+                    <select id="filter-artist" class="filter-select max-w-[200px]">
+                        <option value="all">All Artists (Worldwide)</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- City -->
+            <div class="flex items-center gap-2">
+                <label for="filter-city" class="text-xs text-[#44403C] font-semibold whitespace-nowrap">City</label>
+                <div class="relative">
+                    <select id="filter-city" class="filter-select" style="min-width:160px;max-width:220px;max-height:220px;overflow-y:auto;">
+                        <option value="all">All Cities</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Year -->
+            <div class="flex items-center gap-2">
+                <label for="filter-year" class="text-xs text-[#44403C] font-semibold whitespace-nowrap">Year</label>
+                <div class="relative">
+                    <select id="filter-year" class="filter-select">
+                        <option value="all">All Years</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Data Source Toggle & Reset -->
+            <div class="ml-auto flex items-center gap-3 flex-wrap">
+                <!-- Data Source Filter Buttons -->
+                <div class="flex items-center gap-1 bg-[#F2EEE6] border border-[#E7E0D5] p-1 rounded-xl text-xs">
+                    <span class="text-[10px] text-[#78716C] font-semibold px-2">Data Source:</span>
+                    <button id="btn-ds-all" class="px-2.5 py-1 rounded-lg text-xs font-semibold transition-all bg-[#B88A36] text-[#292524] shadow-xs">All</button>
+                    <button id="btn-ds-verified" class="px-2.5 py-1 rounded-lg text-xs font-semibold transition-all text-[#44403C] hover:text-[#292524]">Verified</button>
+                    <button id="btn-ds-demo" class="px-2.5 py-1 rounded-lg text-xs font-semibold transition-all text-[#44403C] hover:text-[#292524]">Demo</button>
+                </div>
+
+                <button id="btn-reset-filters" class="text-xs px-3 py-1.5 rounded-lg bg-[#FAF8F4] hover:bg-[#F2EEE6] text-[#44403C] border border-[#D6CFC3] transition flex items-center gap-1.5 font-medium">
+                    <i data-lucide="rotate-ccw" class="w-3.5 h-3.5 text-[#B88A36]"></i> Reset Filters
+                </button>
+
+                <span id="demo-indicator-badge" class="badge-api text-[10px] font-semibold px-2.5 py-1 rounded-full flex items-center gap-1 shadow-xs">
+                    <span class="w-1.5 h-1.5 rounded-full bg-[#B88A36] animate-pulse"></span>
+                    <span>Demo dataset active</span>
+                </span>
+            </div>
+        </section>
+
+        <!-- ── KPI Cards (Our Database) ──────────────────────────────────── -->
+        <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+            <div class="group bg-[#FFFFFF] rounded-2xl p-5 flex items-center justify-between border border-[#E7E0D5] shadow-sm hover:shadow-md transition-all hover:-translate-y-1">
+                <div>
+                    <div class="flex items-center gap-2 mb-1">
+                        <p class="text-xs font-semibold text-[#78716C] uppercase tracking-wider">Total Artists</p>
+                        <span class="badge-db text-[9px] font-bold px-1.5 py-0.5 rounded-full">DB</span>
+                    </div>
+                    <h3 id="kpi-artists" class="text-3xl font-extrabold font-heading text-[#292524] mt-1">—</h3>
+                    <p class="text-[11px] text-[#78716C] font-medium mt-1">In our database</p>
+                </div>
+                <div class="w-12 h-12 rounded-xl bg-[#F6EBD1] border border-[#E7D7AF] flex items-center justify-center text-[#B88A36] group-hover:scale-105 transition-transform">
+                    <i data-lucide="users" class="w-6 h-6"></i>
+                </div>
+            </div>
+
+            <div class="group bg-[#FFFFFF] rounded-2xl p-5 flex items-center justify-between border border-[#E7E0D5] shadow-sm hover:shadow-md transition-all hover:-translate-y-1">
+                <div>
+                    <div class="flex items-center gap-2 mb-1">
+                        <p class="text-xs font-semibold text-[#78716C] uppercase tracking-wider">Total Tours</p>
+                        <span class="badge-db text-[9px] font-bold px-1.5 py-0.5 rounded-full">DB</span>
+                    </div>
+                    <h3 id="kpi-tours" class="text-3xl font-extrabold font-heading text-[#292524] mt-1">—</h3>
+                    <p class="text-[11px] text-[#78716C] font-medium mt-1">World itineraries</p>
+                </div>
+                <div class="w-12 h-12 rounded-xl bg-[#F6EBD1] border border-[#E7D7AF] flex items-center justify-center text-[#B88A36] group-hover:scale-105 transition-transform">
+                    <i data-lucide="globe" class="w-6 h-6"></i>
+                </div>
+            </div>
+
+            <div class="group bg-[#FFFFFF] rounded-2xl p-5 flex items-center justify-between border border-[#E7E0D5] shadow-sm hover:shadow-md transition-all hover:-translate-y-1">
+                <div>
+                    <div class="flex items-center gap-2 mb-1">
+                        <p class="text-xs font-semibold text-[#78716C] uppercase tracking-wider">Concerts Held</p>
+                        <span class="badge-db text-[9px] font-bold px-1.5 py-0.5 rounded-full">DB</span>
+                    </div>
+                    <h3 id="kpi-concerts" class="text-3xl font-extrabold font-heading text-[#292524] mt-1">—</h3>
+                    <p class="text-[11px] text-[#78716C] font-medium mt-1">Archived events</p>
+                </div>
+                <div class="w-12 h-12 rounded-xl bg-[#F6EBD1] border border-[#E7D7AF] flex items-center justify-center text-[#B88A36] group-hover:scale-105 transition-transform">
+                    <i data-lucide="calendar" class="w-6 h-6"></i>
+                </div>
+            </div>
+
+            <div class="group bg-[#FFFFFF] rounded-2xl p-5 flex items-center justify-between border border-[#E7E0D5] shadow-sm hover:shadow-md transition-all hover:-translate-y-1">
+                <div>
+                    <div class="flex items-center gap-2 mb-1">
+                        <p class="text-xs font-semibold text-[#78716C] uppercase tracking-wider">Songs Catalog</p>
+                        <span class="badge-db text-[9px] font-bold px-1.5 py-0.5 rounded-full">DB</span>
+                    </div>
+                    <h3 id="kpi-songs" class="text-3xl font-extrabold font-heading text-[#292524] mt-1">—</h3>
+                    <p class="text-[11px] text-[#78716C] font-medium mt-1">Archived tracks</p>
+                </div>
+                <div class="w-12 h-12 rounded-xl bg-[#F6EBD1] border border-[#E7D7AF] flex items-center justify-center text-[#B88A36] group-hover:scale-105 transition-transform">
+                    <i data-lucide="music" class="w-6 h-6"></i>
+                </div>
+            </div>
+        </section>
+
+        <!-- ── Dashboard Tab ─────────────────────────────────────────────── -->
+        <div x-show="activeTab === 'dashboard'"
+             x-transition:enter="transition ease-out duration-300"
+             x-transition:enter-start="opacity-0 translate-y-4"
+             x-transition:enter-end="opacity-100 translate-y-0">
+
+            <section class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+                <!-- Bar: Top 5 Most Played Songs -->
+                <div class="bg-[#FFFFFF] rounded-2xl p-5 flex flex-col shadow-sm border border-[#E7E0D5]">
+                    <div class="flex items-start justify-between mb-4">
+                        <div>
+                            <h3 class="font-heading font-bold text-base text-[#292524]">Top 5 Most Played Songs</h3>
+                            <p class="text-xs text-[#78716C] mt-0.5">Calculated from real setlist records</p>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <span class="badge-api text-[9px] font-bold px-1.5 py-0.5 rounded-full">API</span>
+                            <i data-lucide="bar-chart-2" class="w-5 h-5 text-[#B88A36]"></i>
+                        </div>
+                    </div>
+                    <div class="h-64 relative">
+                        <canvas id="chart-top-songs"></canvas>
+                    </div>
+                </div>
+
+                <!-- Doughnut: Concerts by City -->
+                <div class="bg-[#FFFFFF] rounded-2xl p-5 flex flex-col shadow-sm border border-[#E7E0D5]">
+                    <div class="flex items-start justify-between mb-4">
+                        <div>
+                            <h3 class="font-heading font-bold text-base text-[#292524]">Concerts by City</h3>
+                            <p class="text-xs text-[#78716C] mt-0.5">Actual concerts grouped by city</p>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <span class="badge-api text-[9px] font-bold px-1.5 py-0.5 rounded-full">API</span>
+                            <i data-lucide="pie-chart" class="w-5 h-5 text-[#B88A36]"></i>
+                        </div>
+                    </div>
+                    <div class="h-64 relative">
+                        <canvas id="chart-city"></canvas>
+                    </div>
+                </div>
+
+                <!-- Line: Concerts per Year -->
+                <div class="bg-[#FFFFFF] rounded-2xl p-5 flex flex-col shadow-sm border border-[#E7E0D5]">
+                    <div class="flex items-start justify-between mb-4">
+                        <div>
+                            <h3 class="font-heading font-bold text-base text-[#292524]">Concerts per Year</h3>
+                            <p class="text-xs text-[#78716C] mt-0.5">Annual volume from real dates</p>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <span class="badge-api text-[9px] font-bold px-1.5 py-0.5 rounded-full">API</span>
+                            <i data-lucide="trending-up" class="w-5 h-5 text-[#B88A36]"></i>
+                        </div>
+                    </div>
+                    <div class="h-64 relative">
+                        <canvas id="chart-year"></canvas>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <!-- ── AI Assistant & Predictor Tab ─────────────────────────────── -->
+        <div x-show="activeTab === 'ai-assistant'"
+             x-transition:enter="transition ease-out duration-300"
+             x-transition:enter-start="opacity-0 translate-y-4"
+             x-transition:enter-end="opacity-100 translate-y-0"
+             class="space-y-6">
+
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+                <!-- Left 2 Cols: AI Concert Chatbot -->
+                <div class="lg:col-span-2 bg-[#FFFFFF] rounded-2xl p-6 shadow-sm flex flex-col h-[650px] border border-[#E7E0D5]">
+                    <div class="flex items-center justify-between border-b border-[#E7E0D5] pb-4 mb-4">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-xl bg-[#F6EBD1] border border-[#E7D7AF] flex items-center justify-center text-[#B88A36] shadow-sm">
+                                <i data-lucide="bot" class="w-6 h-6"></i>
+                            </div>
+                            <div>
+                                <h3 class="font-heading font-extrabold text-lg text-[#292524]">ArchiveAI Assistant</h3>
+                                <p class="text-xs text-[#6F511D] font-medium">Powered by Groq Cloud (GPT-120B / LLaMA 3.3)</p>
+                            </div>
+                        </div>
+                        <span class="badge-api text-[10px] font-bold px-2.5 py-1 rounded-full flex items-center gap-1">
+                            <i data-lucide="zap" class="w-3 h-3 text-[#B88A36]"></i> Ultra-Fast Groq Inference
+                        </span>
+                    </div>
+
+                    <!-- Quick Prompts -->
+                    <div class="flex items-center gap-2 overflow-x-auto pb-3 custom-scrollbar mb-2 text-xs">
+                        <span class="text-[#78716C] font-semibold shrink-0">Try asking:</span>
+                        <button data-prompt="Analyze top concert songs in the archive" class="btn-quick-prompt shrink-0 bg-[#FAF8F4] hover:bg-[#F6EBD1] border border-[#E7E0D5] hover:border-[#E7D7AF] text-[#44403C] hover:text-[#6F511D] px-3 py-1.5 rounded-xl transition-all font-medium">
+                            🎵 Top Concert Songs
+                        </button>
+                        <button data-prompt="What concerts took place in India?" class="btn-quick-prompt shrink-0 bg-[#FAF8F4] hover:bg-[#F6EBD1] border border-[#E7E0D5] hover:border-[#E7D7AF] text-[#44403C] hover:text-[#6F511D] px-3 py-1.5 rounded-xl transition-all font-medium">
+                            🇮🇳 India Concert History
+                        </button>
+                        <button data-prompt="Predict setlist for Coldplay at DY Patil Stadium Mumbai" class="btn-quick-prompt shrink-0 bg-[#FAF8F4] hover:bg-[#F6EBD1] border border-[#E7E0D5] hover:border-[#E7D7AF] text-[#44403C] hover:text-[#6F511D] px-3 py-1.5 rounded-xl transition-all font-medium">
+                            🎸 Predict Coldplay Setlist
+                        </button>
+                        <button data-prompt="Give me a summary of archived tours and artists" class="btn-quick-prompt shrink-0 bg-[#FAF8F4] hover:bg-[#F6EBD1] border border-[#E7E0D5] hover:border-[#E7D7AF] text-[#44403C] hover:text-[#6F511D] px-3 py-1.5 rounded-xl transition-all font-medium">
+                            📊 Tour &amp; Artist Summary
+                        </button>
+                    </div>
+
+                    <!-- Chat Messages Area -->
+                    <div id="ai-chat-messages" class="flex-1 overflow-y-auto pr-2 custom-scrollbar space-y-3 p-3 bg-[#FAF8F4] rounded-xl border border-[#E7E0D5] mb-4">
+                        <div class="flex justify-start mb-4 items-start gap-3">
+                            <div class="w-8 h-8 rounded-full bg-[#F6EBD1] border border-[#E7D7AF] flex items-center justify-center text-[#B88A36] text-xs font-bold shrink-0 shadow-sm">
+                                <i data-lucide="bot" class="w-4 h-4"></i>
+                            </div>
+                            <div class="max-w-[85%] bg-[#FFFFFF] rounded-2xl rounded-tl-none px-5 py-4 border border-[#E7E0D5] text-[#292524] text-sm shadow-sm space-y-2">
+                                <p class="font-semibold text-[#6F511D]">👋 Welcome to Concert Archive AI!</p>
+                                <p class="text-[#44403C] text-xs leading-relaxed">I am your AI Musicologist powered by <strong>Groq Cloud</strong>. Ask me anything about tour setlists, concert predictions, artist statistics, or live music trends!</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Chat Input Form -->
+                    <form id="form-ai-chat" class="flex items-center gap-2">
+                        <input id="input-ai-prompt" type="text" placeholder="Ask AI about concerts, setlists, artist histories…" required
+                            class="flex-1 px-4 py-3 text-sm rounded-xl bg-[#FFFFFF] border border-[#D6CFC3] text-[#292524] placeholder-[#A8A29E] focus:outline-none focus:border-[#B88A36] focus:ring-2 focus:ring-[#B88A36]/20 transition-all">
+                        <button type="submit"
+                            class="btn-gold font-bold text-sm px-5 py-3 rounded-xl transition-all flex items-center gap-2 shrink-0">
+                            <span>Send</span>
+                            <i data-lucide="send" class="w-4 h-4"></i>
+                        </button>
+                    </form>
+                </div>
+
+                <!-- Right 1 Col: AI Setlist Predictor & Insights -->
+                <div class="space-y-6">
+
+                    <!-- AI Setlist Predictor Form -->
+                    <div class="bg-[#FFFFFF] rounded-2xl p-5 shadow-sm border border-[#E7E0D5] space-y-4">
+                        <div class="flex items-center gap-2">
+                            <i data-lucide="wand-2" class="w-5 h-5 text-[#B88A36]"></i>
+                            <h3 class="font-heading font-extrabold text-base text-[#292524]">AI Setlist Predictor</h3>
+                        </div>
+                        <form id="form-predict-setlist" class="space-y-3 text-xs">
+                            <div>
+                                <label class="block font-semibold text-[#44403C] mb-1">Artist Name</label>
+                                <input id="input-predict-artist" type="text" required placeholder="e.g. Coldplay, Ed Sheeran, A.R. Rahman"
+                                    class="w-full px-3 py-2 rounded-xl bg-[#FFFFFF] border border-[#D6CFC3] text-[#292524] placeholder-[#A8A29E] focus:outline-none focus:border-[#B88A36]">
+                            </div>
+                            <div>
+                                <label class="block font-semibold text-[#44403C] mb-1">Venue / City</label>
+                                <input id="input-predict-venue" type="text" placeholder="e.g. Wembley Stadium, London or Mumbai"
+                                    class="w-full px-3 py-2 rounded-xl bg-[#FFFFFF] border border-[#D6CFC3] text-[#292524] placeholder-[#A8A29E] focus:outline-none focus:border-[#B88A36]">
+                            </div>
+                            <div class="grid grid-cols-2 gap-2">
+                                <div>
+                                    <label class="block font-semibold text-[#44403C] mb-1">Event Type</label>
+                                    <select id="input-predict-type" class="w-full px-2.5 py-2 rounded-xl bg-[#FFFFFF] border border-[#D6CFC3] text-[#292524] focus:outline-none focus:border-[#B88A36]">
+                                        <option value="Headliner Stadium Tour">Stadium Tour</option>
+                                        <option value="Festival Headline Slot">Festival Headline</option>
+                                        <option value="Acoustic & Unplugged">Acoustic / Intimate</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block font-semibold text-[#44403C] mb-1">Song Count</label>
+                                    <select id="input-predict-count" class="w-full px-2.5 py-2 rounded-xl bg-[#FFFFFF] border border-[#D6CFC3] text-[#292524] focus:outline-none focus:border-[#B88A36]">
+                                        <option value="10">10 Songs</option>
+                                        <option value="14" selected>14 Songs</option>
+                                        <option value="18">18 Songs</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <button type="submit"
+                                class="w-full btn-gold font-bold text-xs py-2.5 rounded-xl transition-all flex items-center justify-center gap-2">
+                                <i data-lucide="sparkles" class="w-4 h-4"></i> Generate Predicted Setlist
+                            </button>
+                        </form>
+                    </div>
+
+                    <!-- Predicted Setlist Result Container -->
+                    <div id="predicted-setlist-result"></div>
+
+                    <!-- AI Insights Container -->
+                    <div class="bg-[#FFFFFF] rounded-2xl p-5 shadow-sm border border-[#E7E0D5] space-y-3">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center gap-2">
+                                <i data-lucide="line-chart" class="w-5 h-5 text-[#B88A36]"></i>
+                                <h3 class="font-heading font-bold text-base text-[#292524]">Groq AI Archive Insights</h3>
+                            </div>
+                            <button id="btn-refresh-insights" class="text-xs text-[#96702B] hover:text-[#6F511D] font-semibold flex items-center gap-1">
+                                <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i> Refresh
+                            </button>
+                        </div>
+                        <div id="ai-insights-content" class="text-xs text-[#44403C] leading-relaxed space-y-2">
+                            <p class="text-[#78716C] italic">Click Refresh to generate Groq AI insights for current concert database records.</p>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+
+        <!-- ── Recent Concerts Tab ────────────────────────────────────────── -->
+        <div x-show="activeTab === 'concerts' || activeTab === 'dashboard'"
+             x-transition:enter="transition ease-out duration-300"
+             x-transition:enter-start="opacity-0 translate-y-4"
+             x-transition:enter-end="opacity-100 translate-y-0">
+
+            <section class="bg-[#FFFFFF] rounded-2xl overflow-hidden shadow-sm border border-[#E7E0D5]">
+                <div class="px-6 py-5 border-b border-[#E7E0D5] flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                        <i data-lucide="radio" class="w-5 h-5 text-[#B88A36]"></i>
+                        <h3 class="font-heading font-bold text-lg text-[#292524]">Recent Concert Events</h3>
+                        <span class="badge-db text-[9px] font-bold px-1.5 py-0.5 rounded-full ml-2">Our Database</span>
+                    </div>
+                    <span class="text-xs text-[#78716C] font-medium">Click Setlist to view song order</span>
+                </div>
+                <div class="overflow-x-auto custom-scrollbar">
+                    <table class="w-full text-left border-collapse text-sm">
+                        <thead>
+                            <tr class="bg-[#F2EEE6] text-xs font-semibold text-[#44403C] uppercase tracking-wider border-b border-[#E7E0D5]">
+                                <th class="px-6 py-3.5">ID</th>
+                                <th class="px-6 py-3.5">Artist</th>
+                                <th class="px-6 py-3.5">Tour Name</th>
+                                <th class="px-6 py-3.5">Venue &amp; City</th>
+                                <th class="px-6 py-3.5">Date</th>
+                                <th class="px-6 py-3.5 text-right">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tbody-recent-concerts" class="divide-y divide-[#E7E0D5]">
+                            <tr><td colspan="6" class="px-6 py-4 text-center text-[#78716C]">Loading…</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        </div>
+
+        <!-- ── Artist Management Tab ──────────────────────────────────────── -->
+        <div x-show="activeTab === 'artists' || activeTab === 'dashboard'"
+             x-transition:enter="transition ease-out duration-300"
+             x-transition:enter-start="opacity-0 translate-y-4"
+             x-transition:enter-end="opacity-100 translate-y-0">
+
+            <section class="bg-[#FFFFFF] rounded-2xl overflow-hidden shadow-sm border border-[#E7E0D5]">
+                <div class="px-6 py-5 border-b border-[#E7E0D5] flex items-center justify-between gap-4">
+                    <div class="flex items-center gap-2">
+                        <i data-lucide="user-check" class="w-5 h-5 text-[#B88A36]"></i>
+                        <div>
+                            <h3 class="font-heading font-bold text-lg text-[#292524]">Artist Roster Management</h3>
+                            <p class="text-xs text-[#78716C]">Stored in our Firebase database</p>
+                        </div>
+                        <span class="badge-db text-[9px] font-bold px-1.5 py-0.5 rounded-full ml-2">Our Database</span>
+                    </div>
+                    <button id="btn-add-artist"
+                        class="btn-gold font-bold text-sm px-4 py-2 rounded-xl transition-all flex items-center gap-2">
+                        <i data-lucide="plus-circle" class="w-4 h-4"></i> Add Artist
+                    </button>
+                </div>
+                <div class="overflow-x-auto custom-scrollbar">
+                    <table class="w-full text-left border-collapse text-sm">
+                        <thead>
+                            <tr class="bg-[#F2EEE6] text-xs font-semibold text-[#44403C] uppercase tracking-wider border-b border-[#E7E0D5]">
+                                <th class="px-6 py-3.5">ID</th>
+                                <th class="px-6 py-3.5">Artist Name</th>
+                                <th class="px-6 py-3.5">Genre</th>
+                                <th class="px-6 py-3.5">Country</th>
+                                <th class="px-6 py-3.5 text-right">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tbody-artists" class="divide-y divide-[#E7E0D5]">
+                            <tr><td colspan="5" class="px-6 py-4 text-center text-[#78716C]">Loading…</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        </div>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-[#292524] text-[#D6D3D1] border-t border-[#44403C] py-8 text-center text-xs mt-12">
+        <div class="max-w-7xl mx-auto px-4 space-y-2">
+            <p class="text-[#F5F5F4] font-medium">ConcertArchive &copy; 2026 — Live Concert Setlist &amp; Tour Archive</p>
+            <p class="text-[#A8A29E]">AI powered by <span class="text-[#E4C477] font-semibold">Groq Cloud LLaMA 3.3</span> · Charts from <span class="text-[#E4C477] font-semibold">setlist.fm API</span> · Database via <span class="text-[#E4C477] font-semibold">Firebase</span></p>
+        </div>
+    </footer>
+
+    <!-- ═══ Modals ════════════════════════════════════════════════════════════ -->
+
+    <!-- Add/Edit Artist Modal -->
+    <div id="modal-artist" class="hidden fixed inset-0 z-50 bg-[#292524]/60 backdrop-blur-xs items-center justify-center p-4 transition-opacity duration-300 opacity-0">
+        <div id="modal-artist-card" class="bg-[#FFFFFF] w-full max-w-md rounded-2xl border border-[#E7E0D5] shadow-2xl p-6 space-y-6 transform transition-all duration-300 scale-90 opacity-0">
+            <div class="flex items-center justify-between border-b border-[#E7E0D5] pb-4">
+                <h3 id="modal-artist-title" class="font-heading font-bold text-lg text-[#292524]">Add New Artist</h3>
+                <button id="btn-cancel-artist" class="text-[#78716C] hover:text-[#292524] transition-colors">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+            <form id="form-artist" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold text-[#44403C] uppercase tracking-wider mb-1.5">Artist Name</label>
+                    <input id="input-artist-name" type="text" required placeholder="e.g. Coldplay"
+                        class="w-full px-3.5 py-2 text-sm rounded-xl bg-[#FFFFFF] border border-[#D6CFC3] text-[#292524] placeholder-[#A8A29E] focus:outline-none focus:border-[#B88A36]">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-[#44403C] uppercase tracking-wider mb-1.5">Genre</label>
+                    <input id="input-artist-genre" type="text" required placeholder="e.g. Alternative Rock"
+                        class="w-full px-3.5 py-2 text-sm rounded-xl bg-[#FFFFFF] border border-[#D6CFC3] text-[#292524] placeholder-[#A8A29E] focus:outline-none focus:border-[#B88A36]">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-[#44403C] uppercase tracking-wider mb-1.5">Country</label>
+                    <input id="input-artist-country" type="text" required placeholder="e.g. United Kingdom"
+                        class="w-full px-3.5 py-2 text-sm rounded-xl bg-[#FFFFFF] border border-[#D6CFC3] text-[#292524] placeholder-[#A8A29E] focus:outline-none focus:border-[#B88A36]">
+                </div>
+                <div class="flex justify-end gap-3 pt-4 border-t border-[#E7E0D5]">
+                    <button type="button" id="btn-cancel-artist-btn" class="btn-secondary px-4 py-2 text-xs font-semibold rounded-xl transition-all">Cancel</button>
+                    <button type="submit" class="btn-gold px-5 py-2 text-xs font-bold rounded-xl shadow-sm transition-all">Save Artist</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Delete Artist Modal -->
+    <div id="modal-delete" class="hidden fixed inset-0 z-50 bg-[#292524]/60 backdrop-blur-xs items-center justify-center p-4 transition-opacity duration-300 opacity-0">
+        <div id="modal-delete-card" class="bg-[#FFFFFF] w-full max-w-sm rounded-2xl border border-[#E7E0D5] shadow-2xl p-6 text-center space-y-5 transform transition-all duration-300 scale-90 opacity-0">
+            <div class="w-12 h-12 rounded-full bg-[#FEE4E2] border border-[#FECDCA] text-[#B42318] flex items-center justify-center mx-auto">
+                <i data-lucide="alert-triangle" class="w-6 h-6"></i>
+            </div>
+            <div>
+                <h3 class="font-heading font-bold text-lg text-[#292524]">Delete Artist?</h3>
+                <p class="text-xs text-[#78716C] mt-1">Are you sure you want to delete <span id="delete-artist-name" class="font-semibold text-[#B42318]"></span>? This cannot be undone.</p>
+            </div>
+            <div class="flex items-center justify-center gap-3 pt-2">
+                <button id="btn-cancel-delete" class="btn-secondary px-4 py-2 text-xs font-semibold rounded-xl transition-all">Cancel</button>
+                <button id="btn-confirm-delete" class="px-5 py-2 text-xs font-bold rounded-xl bg-[#B42318] hover:bg-[#911a11] text-white shadow-sm transition-all">Confirm Delete</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Setlist Modal -->
+    <div id="modal-setlist" class="hidden fixed inset-0 z-50 bg-[#292524]/60 backdrop-blur-xs items-center justify-center p-4 transition-opacity duration-300 opacity-0">
+        <div id="modal-setlist-card" class="bg-[#FFFFFF] w-full max-w-lg rounded-2xl border border-[#E7E0D5] shadow-2xl p-6 space-y-5 max-h-[85vh] flex flex-col transform transition-all duration-300 scale-90 opacity-0">
+            <div class="flex items-center justify-between border-b border-[#E7E0D5] pb-4">
+                <div>
+                    <h3 id="setlist-modal-title" class="font-heading font-bold text-lg text-[#292524]">Concert Setlist</h3>
+                    <p id="setlist-modal-subtitle" class="text-xs text-[#6F511D] font-medium"></p>
+                </div>
+                <button id="btn-close-setlist" class="text-[#78716C] hover:text-[#292524] transition-colors">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+            <div id="setlist-song-list" class="flex-1 overflow-y-auto space-y-2.5 pr-1 custom-scrollbar"></div>
+            <div class="border-t border-[#E7E0D5] pt-3 text-right">
+                <button id="btn-close-setlist-footer" class="btn-secondary px-4 py-2 text-xs font-semibold rounded-xl transition-all">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- JS Modules -->
+    <script type="module">
+        import { initDashboard } from './js/dashboard.js';
+        import { initCRUD }      from './js/crud.js';
+        import { initAiModule }  from './js/ai.js';
+        import { initNavAuthUI, checkServerSession, enforceAuthGuard } from './js/auth.js';
+        import { initSearchSystem } from './js/search.js';
+
+        window.addEventListener('pageshow', (e) => {
+            enforceAuthGuard();
+        });
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            if (!enforceAuthGuard()) return;
+            const valid = await checkServerSession();
+            if (!valid) {
+                window.location.replace('/login');
+                return;
+            }
+            initNavAuthUI();
+            if (window.lucide) window.lucide.createIcons();
+            initDashboard();
+            initCRUD();
+            initAiModule();
+            initSearchSystem();
+        });
+    </script>
+    <!-- Theme Toggle Module -->
+    <script type="module" src="/js/theme.js"></script>
+</body>
+</html>
