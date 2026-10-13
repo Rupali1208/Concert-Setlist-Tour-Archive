@@ -1,0 +1,17 @@
+{
+  "name": "concert-setlist-tour-archive-backend",
+  "version": "1.0.0",
+  "description": "REST API Backend for Concert Setlist & Tour Archive",
+  "main": "server.js",
+  "scripts": {"frontend": "npx -y serve ./frontend --listen 3000",
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "firebase-admin": "^14.5.0",
+    "mysql2": "^3.9.7"
+  }
+}
